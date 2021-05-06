@@ -1,81 +1,68 @@
-from django.shortcuts import render, HttpResponse
+from django.shortcuts import (
+    render,
+    HttpResponse,
+    redirect,
+)
+
+from django.views.generic import (
+    View,
+    ListView,
+    DetailView,
+    FormView,
+)
+
+from django.urls import reverse_lazy
+
 from user.models import User
+from user.forms import UserForm
 
 
-def index(request):
+class UserListView(ListView):
 
-    users = User.objects.all()
-
-    context = {
-        'users': users,
-    }
-
-    return render(
-        template_name='index.html',
-        request=request,
-        context=context,
-    )
+    model = User
+    template_name = 'index.html'
 
 
-def add_user(request):
+class UserDetailView(DetailView):
 
-    if request.method == 'POST':
+    model = User
+    template_name = 'user.html'
+    
+    
+class AddUserView(FormView):
 
-        user = User(
-            username=request.POST['name'],
-            email=request.POST['email'],
-        )
+    form_class = UserForm
+    template_name = 'form.html'
+    success_url = reverse_lazy('user-list')
 
-        user.save()
+    def form_valid(self, form):
+        form.save()
+
+        response = super().form_valid(form)
+        return response
+
+
+class EditUserView(View):
+
+    def get(self, request, user_id):
+
+        form = UserForm()
 
         context = {
-            'user': user,
+            'form': form
         }
 
         return render(
-            template_name='user.html',
-            request=request,
+            template_name='form.html',
             context=context,
-
+            request=request,
         )
 
-    return render(
-        template_name='form.html',
-        request=request
-    )
+    def post(self, request, user_id):
 
+        user = User.objects.get(id=user_id)
 
-def get_user(request, user_id):
-
-    user = User.objects.get(pk=user_id)
-
-    context = {
-        'user': user,
-    }
-
-    return render(
-        template_name='user.html',
-        request=request,
-        context=context,
-
-    )
-
-
-def delete_user(request, user_id):
-
-    user = User.objects.get(pk=user_id)
-    user.delete()
-
-    return HttpResponse(f'Deleted {user.username}')
-
-
-def edit_user(request, user_id):
-
-    user = User.objects.get(id=user_id)
-
-    if request.method == 'POST':
-
-        username = request.POST['name']
+        username = request.POST['username']
         email = request.POST['email']
 
         if len(username) != 0:
@@ -86,18 +73,20 @@ def edit_user(request, user_id):
 
         user.save()
 
-        context = {
-            'user': user,
-        }
+        return redirect(reverse_lazy('user-list'))
 
-        return render(
-            template_name='user.html',
-            request=request,
-            context=context,
 
-        )
+class DeleteUserView(View):
 
-    return render(
-        template_name='form.html',
-        request=request
-    )
+    def get(self, request, user_id):
+
+        user = User.objects.get(pk=user_id)
+        user.delete()
+
+        return HttpResponse(f'Deleted {user.username}')
+
+
+
+
+
+
